@@ -5,6 +5,18 @@ First, you need to install Chocolatey, which is a package manager for Windows
 systems.  Please refer to `this link <https://chocolatey.org/install>`_ for
 instructions.
 
+Installing using Chocolatey
+***************************
+
+You can install manim very easily using chocolatey, by typing the following command.
+
+
+.. code-block:: powershell
+
+      choco install manim
+
+
+And then you can skip all the other steps and move to installing :ref:`latex-installation`.
 
 Cairo installation
 ******************
@@ -60,6 +72,8 @@ Sox installation (optional)
 
 2. You can check if you did it right by running ``refreshenv`` to update your
    environment variable and running ``sox``.
+
+.. _latex-installation:
 
 LaTeX Installation
 ******************

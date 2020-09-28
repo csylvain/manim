@@ -1,3 +1,8 @@
+"""The interface between scenes and ffmpeg."""
+
+__all__ = ["SceneFileWriter"]
+
+
 import numpy as np
 from pydub import AudioSegment
 import shutil
@@ -8,9 +13,8 @@ from time import sleep
 import datetime
 from PIL import Image
 
+from .. import file_writer_config, logger, console
 from ..constants import FFMPEG_BIN, GIF_FILE_EXTENSION
-from ..config import file_writer_config
-from ..logger import logger, console
 from ..utils.config_ops import digest_config
 from ..utils.file_ops import guarantee_existence
 from ..utils.file_ops import add_extension_if_not_present
@@ -42,6 +46,7 @@ class SceneFileWriter(object):
         self.init_output_directories()
         self.init_audio()
         self.frame_count = 0
+        self.index_partial_movie_file = 0
 
     # Output directories and files
     def init_output_directories(self):
@@ -57,7 +62,8 @@ class SceneFileWriter(object):
                 if not file_writer_config["custom_folders"]:
                     image_dir = guarantee_existence(
                         os.path.join(
-                            file_writer_config["images_dir"], module_directory,
+                            file_writer_config["images_dir"],
+                            module_directory,
                         )
                     )
                 else:
@@ -91,7 +97,11 @@ class SceneFileWriter(object):
             )
             if not file_writer_config["custom_folders"]:
                 self.partial_movie_directory = guarantee_existence(
-                    os.path.join(movie_dir, "partial_movie_files", scene_name,)
+                    os.path.join(
+                        movie_dir,
+                        "partial_movie_files",
+                        scene_name,
+                    )
                 )
             else:
                 self.partial_movie_directory = guarantee_existence(
@@ -133,14 +143,16 @@ class SceneFileWriter(object):
         return fn if fn else self.scene.__class__.__name__
 
     def get_resolution_directory(self):
-        """
+        """Get the name of the resolution directory directly containing
+        the video file.
+
         This method gets the name of the directory that immediately contains the
-        video file. This name is <height_in_pixels_of_video>p<frame_rate>
-        E.G:
-            If you are rendering an 854x480 px animation at 15fps, the name of the directory
-            that immediately contains the video file will be
-            480p15.
-            The file structure should look something like:
+        video file. This name is ``<height_in_pixels_of_video>p<frame_rate>``.
+        For example, if you are rendering an 854x480 px animation at 15fps,
+        the name of the directory that immediately contains the video file
+        will be ``480p15``.
+
+        The file structure should look something like::
 
             MEDIA_DIR
                 |--Tex
@@ -149,9 +161,10 @@ class SceneFileWriter(object):
                 |--<name_of_file_containing_scene>
                     |--<height_in_pixels_of_video>p<frame_rate>
                         |--<scene_name>.mp4
+
         Returns
         -------
-        str
+        :class:`str`
             The name of the directory.
         """
         pixel_height = self.scene.camera.pixel_height
@@ -189,10 +202,11 @@ class SceneFileWriter(object):
         result = os.path.join(
             self.partial_movie_directory,
             "{}{}".format(
-                self.scene.play_hashes_list[self.scene.num_plays],
+                self.scene.play_hashes_list[self.index_partial_movie_file],
                 file_writer_config["movie_file_extension"],
             ),
         )
+        self.index_partial_movie_file += 1
         return result
 
     def get_movie_file_path(self):
@@ -250,7 +264,8 @@ class SceneFileWriter(object):
         diff = new_end - curr_end
         if diff > 0:
             segment = segment.append(
-                AudioSegment.silent(int(np.ceil(diff * 1000))), crossfade=0,
+                AudioSegment.silent(int(np.ceil(diff * 1000))),
+                crossfade=0,
             )
         self.audio_segment = segment.overlay(
             new_segment,
@@ -442,10 +457,12 @@ class SceneFileWriter(object):
         self.writing_process.stdin.close()
         self.writing_process.wait()
         shutil.move(
-            self.temp_partial_movie_file_path, self.partial_movie_file_path,
+            self.temp_partial_movie_file_path,
+            self.partial_movie_file_path,
         )
-        logger.debug(
-            f"Animation {self.scene.num_plays} : Partial movie file written in {self.partial_movie_file_path}"
+        logger.info(
+            f"Animation {self.scene.num_plays} : Partial movie file written in %(path)s",
+            {"path": {self.partial_movie_file_path}},
         )
 
     def is_already_cached(self, hash_invocation):
@@ -534,7 +551,8 @@ class SceneFileWriter(object):
             # Makes sure sound file length will match video file
             self.add_audio_segment(AudioSegment.silent(0))
             self.audio_segment.export(
-                sound_file_path, bitrate="312k",
+                sound_file_path,
+                bitrate="312k",
             )
             temp_file_path = movie_file_path.replace(".", "_temp.")
             commands = [
@@ -606,21 +624,12 @@ class SceneFileWriter(object):
         for f in cached_partial_movies:
             os.remove(f)
         logger.info(
-            f"Cache flushed. {len(cached_partial_movies)} file(s) deleted in {self.partial_movie_directory}."
+            f"Cache flushed. {len(cached_partial_movies)} file(s) deleted in %(par_dir)s.",
+            {"par_dir": self.partial_movie_directory},
         )
 
     def print_file_ready_message(self, file_path):
         """
         Prints the "File Ready" message to STDOUT.
         """
-        logger.info("\nFile ready at {}\n".format(file_path))
-
-        if file_writer_config["log_to_file"]:
-            self.write_log()
-
-    def write_log(self):
-        log_file_path = os.path.join(
-            file_writer_config["log_dir"], f"{self.get_default_scene_name()}.log"
-        )
-        console.save_text(log_file_path)
-        logger.info("Log written to {}\n".format(log_file_path))
+        logger.info("\nFile ready at %(file_path)s\n", {"file_path": file_path})

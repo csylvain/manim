@@ -8,14 +8,13 @@ import traceback
 import importlib.util
 import types
 
-from .config import file_writer_config, args
-from .utils import cfg_subcmds
+from . import constants, logger, console, file_writer_config
+from .config.config import args
+from .config import cfg_subcmds
 from .scene.scene import Scene
-from .utils.sounds import play_error_sound
-from .utils.sounds import play_finish_sound
+from .utils.sounds import play_error_sound, play_finish_sound
 from .utils.file_ops import open_file as open_media_file
 from . import constants
-from .logger import logger, console
 
 
 def open_file_if_needed(file_writer):
@@ -113,13 +112,16 @@ def get_scene_classes_from_module(module):
 
 def get_module(file_name):
     if file_name == "-":
+        # Since this feature is used for rapid testing, using Scene Caching would be a
+        # hindrance in this case.
+        file_writer_config["disable_caching"] = True
         module = types.ModuleType("input_scenes")
         logger.info(
             "Enter the animation's code & end with an EOF (CTRL+D on Linux/Unix, CTRL+Z on Windows):"
         )
         code = sys.stdin.read()
         if not code.startswith("from manim import"):
-            logger.warn(
+            logger.warning(
                 "Didn't find an import statement for Manim. Importing automatically..."
             )
             code = "from manim import *\n" + code

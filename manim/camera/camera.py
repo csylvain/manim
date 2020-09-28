@@ -1,5 +1,9 @@
-"A Camera converts the mobjects contained in a Scene into an array of pixels"
-from functools import reduce
+"A camera converts the mobjects contained in a Scene into an array of pixels."
+
+
+__all__ = ["Camera", "BackgroundColoredVMobjectDisplayer"]
+
+
 import itertools as it
 import operator as op
 import time
@@ -10,9 +14,8 @@ from scipy.spatial.distance import pdist
 import cairo
 import numpy as np
 
+from .. import logger, config, camera_config
 from ..constants import *
-from ..config import config, camera_config
-from ..logger import logger
 from ..mobject.types.image_mobject import AbstractImageMobject
 from ..mobject.mobject import Mobject
 from ..mobject.types.point_cloud_mobject import PMobject
@@ -28,18 +31,20 @@ from ..utils.space_ops import get_norm
 
 
 class Camera(object):
-    """
-    Base Camera class.
+    """Base camera class.
+
     This is the object which takes care of what exactly is displayed
     on screen at any given moment.
 
     Some important CONFIG values and local variables to note are:
 
-    self.background_image : str, optional
+    background_image : :class:`str`, optional
         The path to an image that should be the background image.
         If not set, the background is filled with `self.background_color`
 
-    self.pixel_height
+    pixel_height : :class:`int`, optional
+        The height of the scene in pixels.
+
     """
 
     CONFIG = {
@@ -489,7 +494,7 @@ class Camera(object):
 
         Returns
         -------
-        Cairo.Context.Context
+        cairo.Context
             The cached cairo context.
         """
         return self.pixel_array_to_cairo_context.get(id(pixel_array), None)
@@ -501,7 +506,7 @@ class Camera(object):
         ----------
         pixel_array : np.array
             The pixel array to cache
-        ctx : Cairo.Context.Context
+        ctx : cairo.Context
             The context to cache it into.
         """
         self.pixel_array_to_cairo_context[id(pixel_array)] = ctx

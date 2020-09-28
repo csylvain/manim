@@ -1,3 +1,8 @@
+"""A camera that allows mapping between objects."""
+
+__all__ = ["MappingCamera", "OldMultiCamera", "SplitScreenCamera"]
+
+
 import numpy as np
 
 from ..camera.camera import Camera
@@ -38,7 +43,10 @@ class MappingCamera(Camera):
             ):
                 mobject.insert_n_curves(self.min_num_curves)
         Camera.capture_mobjects(
-            self, mobject_copies, include_submobjects=False, excluded_mobjects=None,
+            self,
+            mobject_copies,
+            include_submobjects=False,
+            excluded_mobjects=None,
         )
 
 
@@ -119,5 +127,7 @@ class SplitScreenCamera(OldMultiCamera):
             camera.reset_pixel_shape(camera.pixel_height, half_width)
 
         OldMultiCamera.__init__(
-            self, (left_camera, (0, 0)), (right_camera, (0, half_width)),
+            self,
+            (left_camera, (0, 0)),
+            (right_camera, (0, half_width)),
         )
